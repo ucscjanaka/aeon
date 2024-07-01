@@ -1,0 +1,73 @@
+1)Created DTO class only for the Book entity since Borrower class doesn't have many functions. Also created tables for both entities. resources/db_script folder
+
+2)Created two database tables (book, borrower). In the book entity, it saves borrow date and return date.
+
+3)Borrowers can request a book using an ISBN number. When borrowing a book:
+
+4)First, check whether the book is available in the library using the ISBN number.
+If the book exists, then check the stock.
+
+
+Create a Dockerfile for spring boot application
+
+6)Create a workflow file for building with GitHub Actions (docker-build.yml):
+
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main  # Trigger on push to main branch
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v2
+      with:
+        java-version: '17'
+        
+    - name: Build Docker image
+      run: |
+        echo ${{ secrets.AWS_ACCESS_KEY_ID }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        docker build -t aeon-app .
+        docker tag aeon-app:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/aeon-app:latest
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/aeon-app:latest
+        
+        
+7)Create a workflow file for deployment in AWS environment (docker-deploy.yml):
+
+name: Deploy to AWS ECS
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to ECS
+      uses: aws-actions/amazon-ecs-deploy-task@v2
+      with:
+        cluster: aeon
+        service: aeon
+        task-definition: aeon-task
+        container-image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/aeon-app:latest
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        
+        
+        
+ 8) Created API doc using swagger and open api -http://localhost:8080/swagger-ui/index.html
+ 
+  
